@@ -13,10 +13,18 @@
                     <input type="text" name="details" placeholder="Details">
                     <input type="submit" value="Reecord">
                 </form>
+                {{if .LoggedIn}}
+                <p>Logged in as {{.Username}}.</p>
+                <form method="POST" action="/do_logout">
+                    <input type="submit" value="Logout">
+                </form>
+                {{else}}
+                <a href="/login.html">Login.</a>
+                {{end}}
             </section>
             <section id="feed">
                 <h2>Feed</h2>
-                {{range .}}
+                {{range .Notes}}
                 <article>
                     <h1>{{.Title}}</h1>
                     <p>

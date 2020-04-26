@@ -17,6 +17,11 @@ func (d Database) setupSchema() error {
         title TEXT NOT NULL,
         details TEXT NOT NULL,
         date TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS users(
+            username STRING PRIMARY KEY,
+            password STRING
         );`
 
     _, err := d.db.Exec(stmt)
@@ -128,4 +133,124 @@ func (d Database) GetNotes() ([]Note, error) {
     }
 
     return notes, nil
+}
+
+func (d Database) CheckLogin(username, password string) (bool, error) {
+    stmt, err := d.db.Prepare("SELECT password FROM users WHERE username = ?")
+    if err != nil {
+        return false, err
+    }
+    defer stmt.Close()
+
+    rows, err := stmt.Query(username)
+    if err != nil {
+        return false, err
+    }
+    defer rows.Close()
+
+    loginSuccess := false
+
+    // Loop until there are users and until the password is wrong
+    for rows.Next() && !loginSuccess {
+        var pass string
+        err = rows.Scan(&pass)
+        if err != nil {
+            return false, err
+        }
+        if pass == password {
+            // Successful login
+            loginSuccess = true
+        }
+    }
+
+    err = rows.Err()
+    if err != nil {
+        return false, err
+    }
+
+    // If we are here, no error happened,
+    // return whether the login was successful
+    return loginSuccess, nil
+}
+
+func (d Database) HasUser(username string) (bool, error) {
+    stmt, err := d.db.Prepare("SELECT username FROM users WHERE username = ?")
+    if err != nil {
+        return false, err
+    }
+    defer stmt.Close()
+
+    rows, err := stmt.Query(username)
+    if err != nil {
+        return false, err
+    }
+    defer rows.Close()
+
+    hasUser := false
+
+    // This simply means check that there is at least one row in the result
+    for rows.Next() && !hasUser {
+        hasUser = true
+    }
+
+    err = rows.Err()
+    if err != nil {
+        return false, err
+    }
+
+    return hasUser, nil
+}
+
+// Returns false if the username is already taken
+func (d Database) AddUser(username, password string) (bool, error) {
+    // First check that the username has not already been taken
+    usernameTaken, err := d.HasUser(username)
+    if err != nil {
+        return false, err
+    }
+    if usernameTaken {
+        return false, nil
+    }
+
+    tx, err := d.db.Begin()
+    if err != nil {
+        return false, err
+    }
+
+    stmt, err := tx.Prepare("INSERT INTO users(username, password) VALUES(?, ?);")
+    if err != nil {
+        return false, err
+    }
+    defer stmt.Close()
+
+    _, err = stmt.Exec(username, password)
+    if err != nil {
+        return false, err
+    }
+
+    if err := tx.Commit(); err != nil {
+        return false, err
+    }
+
+    return true, nil
+}
+
+func (d Database) RemoveUser(username string) error {
+    tx, err := d.db.Begin()
+    if err != nil {
+        return nil
+    }
+
+    stmt, err := tx.Prepare("DELETE FROM users WHERE username = ?")
+    if err != nil {
+        return err
+    }
+    defer stmt.Close()
+
+    _, err = stmt.Exec(username)
+    if err != nil {
+        return err
+    }
+
+    return tx.Commit()
 }

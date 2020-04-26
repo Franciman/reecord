@@ -18,5 +18,13 @@ func main() {
         return
     }
 
-    StartServer(":8888", tmpl, db)
+    go func() {
+        if err := StartUserManagementServer(":9999", db); err != nil {
+            log.Println("UserManagementServer error: ", err)
+        }
+    }()
+
+    if err := StartWebServer(":8888", tmpl, db); err != nil {
+        log.Fatal("Webserver error: ", err)
+    }
 }
