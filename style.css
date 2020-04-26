@@ -1,0 +1,17 @@
+.container {
+    display: flex;
+    flex-direction: row;
+}
+
+#feed {
+    margin-left: 10px;
+}
+
+#new_note {
+    margin-right: 10px;
+}
+
+input[type=text] {
+    display: block;
+    margin-bottom: 6px;
+}

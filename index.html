@@ -1,0 +1,37 @@
+<html>
+    <head>
+        <title>Reecord</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+            <section id="new_note">
+                <h2>New note</h2>
+                <form method="POST" action="/add_note">
+                    <input type="text" name="title" placeholder="Title" required>
+                    <input type="text" name="details" placeholder="Details">
+                    <input type="submit" value="Reecord">
+                </form>
+            </section>
+            <section id="feed">
+                <h2>Feed</h2>
+                {{range .}}
+                <article>
+                    <h1>{{.Title}}</h1>
+                    <p>
+                        {{.Details}}
+                    </p>
+                    <footer>
+                        {{.PrettyPrintDate}}
+                        <form method="POST" action="/delete_note">
+                            <input type="hidden" name="note_id" value="{{.NoteID}}">
+                            <input type="submit" value="Delete">
+                        </form>
+                    </footer>
+                </article>
+                {{end}}
+            </section>
+        </div>
+    </body>
+</html>
