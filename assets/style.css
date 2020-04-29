@@ -15,3 +15,7 @@ input[type=text] {
     display: block;
     margin-bottom: 6px;
 }
+
+.note > form {
+    display: inline;
+}

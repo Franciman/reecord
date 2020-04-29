@@ -69,11 +69,39 @@ func removeUser(db Database) gin.HandlerFunc {
     }
 }
 
+func changePassword(db Database) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        username := c.PostForm("username")
+        password := c.PostForm("password")
+
+        if username == "" || password == "" {
+            c.JSON(http.StatusBadRequest, gin.H {
+                "error": "Username and Password must be non empty.",
+            })
+            return
+        }
+
+        err := db.ChangePassword(username, password)
+        if err != nil {
+            log.Println("Error while changing password: ", err)
+            c.JSON(http.StatusInternalServerError, gin.H {
+                "error": "Internal server error, see logs.",
+            })
+            return
+        }
+
+        c.JSON(http.StatusOK, gin.H {
+            "result": "Password successfully changed.",
+        })
+    }
+}
+
 func StartUserManagementServer(addr string, db Database) error {
     r := gin.Default()
 
     r.POST("/add_user", addUser(db))
     r.POST("/remove_user", removeUser(db))
+    r.POST("/change_password", changePassword(db))
 
     return r.Run(addr)
 }

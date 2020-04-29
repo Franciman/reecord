@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-    tmpl, err := template.New("reecord").ParseFiles("assets/index.html")
+    tmpl, err := template.New("reecord").ParseFiles("assets/index.html", "assets/update_note.html")
     if err != nil {
         log.Fatal("Error while parsing html files ", err)
         return

@@ -45,6 +45,7 @@ func addNote(db Database) gin.HandlerFunc {
     return func(c *gin.Context) {
 
         title := c.PostForm("title")
+        link := c.PostForm("link")
         details := c.PostForm("details")
 
         if title == "" {
@@ -52,10 +53,90 @@ func addNote(db Database) gin.HandlerFunc {
             return
         }
 
-        noteDate := time.Now()
+        // We know that the user is logged, if we are here
+        username := sessions.Default(c).Get(userKey).(string)
 
-        if err := db.AddNote(title, details, noteDate); err != nil {
+
+        newNote := Note {
+            Title: title,
+            Link: link,
+            Details: details,
+            Author: username,
+            Date: time.Now(),
+        }
+
+        if err := db.AddNote(newNote); err != nil {
             log.Println("Error while adding note to db: ", err)
+            c.AbortWithStatus(http.StatusInternalServerError)
+            return
+        }
+
+        c.Redirect(http.StatusSeeOther, "/")
+    }
+}
+
+func getUpdateNotePage(db Database) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        rawNoteID := c.Query("note_id")
+        log.Println("Raw noteID: ", rawNoteID)
+        noteID, err := strconv.ParseUint(rawNoteID, 10, 64)
+        if err != nil {
+            log.Println("Error while parsing noteID: ", err)
+            c.AbortWithStatus(http.StatusBadRequest)
+            return
+        }
+
+        note, err := db.GetNote(noteID)
+        if err != nil {
+            log.Println("Error while finding note in db: ", err)
+            c.AbortWithStatus(http.StatusBadRequest)
+            return
+
+        }
+
+        if note == nil {
+            log.Println("No note found with id: ", noteID)
+            c.AbortWithStatus(http.StatusNotFound)
+            return
+        }
+
+        c.HTML(http.StatusOK, "update_note.html", note)
+    }
+}
+
+func updateNote(db Database) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        rawNoteID := c.PostForm("note_id")
+        noteID, err := strconv.ParseUint(rawNoteID, 10, 64)
+        if err != nil {
+            log.Println("Error while parsing noteID: ", err)
+            c.AbortWithStatus(http.StatusBadRequest)
+            return
+        }
+
+        title := c.PostForm("title")
+        link := c.PostForm("link")
+        details := c.PostForm("details")
+
+        if title == "" {
+            c.AbortWithStatus(http.StatusBadRequest)
+            return
+        }
+        // We know that the user is logged, if we are here
+        username := sessions.Default(c).Get(userKey).(string)
+
+
+        newNote := Note {
+            NoteID: noteID,
+            Title: title,
+            Link: link,
+            Details: details,
+            Author: username,
+            Date: time.Now(),
+        }
+
+        if err := db.UpdateNote(newNote); err != nil {
+            log.Println("Error while updating note in db: ", err)
             c.AbortWithStatus(http.StatusInternalServerError)
             return
         }
@@ -98,7 +179,7 @@ func doLogin(db Database) gin.HandlerFunc {
             c.AbortWithStatus(http.StatusInternalServerError)
             return
         }
-        if loginSuccess || true {
+        if loginSuccess {
             // Update session
             session := sessions.Default(c)
             session.Set(userKey, username)
@@ -167,6 +248,7 @@ func StartWebServer(addr string, tmpl *template.Template, db Database) error {
 
     r.GET("/style.css", getFile("assets/style.css"))
     r.GET("/login.html", getFile("assets/login.html"))
+    r.GET("/get_update_page", getUpdateNotePage(db))
     r.GET("/", serveIndexPage(db))
 
     private := r.Group("/")
@@ -174,6 +256,7 @@ func StartWebServer(addr string, tmpl *template.Template, db Database) error {
     {
         private.POST("/add_note", addNote(db))
         private.POST("/delete_note", deleteNote(db))
+        private.POST("/update_note", updateNote(db))
     }
     r.POST("/do_login", doLogin(db))
     r.POST("/do_logout", doLogout(db))

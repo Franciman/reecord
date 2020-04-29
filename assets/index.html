@@ -1,7 +1,9 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
         <title>Reecord</title>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" type="text/css" href="style.css">
     </head>
     <body>
@@ -10,6 +12,7 @@
                 <h2>New note</h2>
                 <form method="POST" action="/add_note">
                     <input type="text" name="title" placeholder="Title" required>
+                    <input type="text" name="link" placeholder="Link">
                     <input type="text" name="details" placeholder="Details">
                     <input type="submit" value="Reecord">
                 </form>
@@ -25,16 +28,23 @@
             <section id="feed">
                 <h2>Feed</h2>
                 {{range .Notes}}
-                <article>
-                    <h1>{{.Title}}</h1>
+                <article class="note">
+                    <h2>{{.Title}}</h2>
+                    <a href="{{.RenderLink}}">{{.Link}}</a>
                     <p>
                         {{.Details}}
                     </p>
                     <footer>
-                        {{.PrettyPrintDate}}
+                        <p>
+                        Last Update: {{.PrettyPrintDate}}, by {{.Author}}
+                        </p>
                         <form method="POST" action="/delete_note">
                             <input type="hidden" name="note_id" value="{{.NoteID}}">
                             <input type="submit" value="Delete">
+                        </form>
+                        <form method="GET" action="/get_update_page">
+                            <input type="hidden" name="note_id" value="{{.NoteID}}">
+                            <input type="submit" value="Update">
                         </form>
                     </footer>
                 </article>

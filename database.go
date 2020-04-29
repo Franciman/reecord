@@ -15,7 +15,9 @@ func (d Database) setupSchema() error {
     stmt := `CREATE TABLE IF NOT EXISTS notes(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
+        link TEXT NOT NULL,
         details TEXT NOT NULL,
+        author TEXT NOT NULL,
         date TEXT NOT NULL
         );
 
@@ -65,24 +67,47 @@ func deserializeDate(date string) (time.Time, error) {
     return time.Parse(dateFormat, date)
 }
 
-func (d Database) AddNote(title string, details string, date time.Time) error {
+// If the note as a NoteID set, it will be ignored,
+// because it is the database's responsibility to generate it
+func (d Database) AddNote(note Note) error {
     tx, err := d.db.Begin()
     if err != nil {
         return err
     }
 
-    stmt, err := tx.Prepare("INSERT INTO notes(title, details, date) VALUES(?, ?, ?);")
+    stmt, err := tx.Prepare("INSERT INTO notes(title, link, details, author, date) VALUES(?, ?, ?, ?, ?);")
     if err != nil {
         return err
     }
     defer stmt.Close()
 
-    _, err = stmt.Exec(title, details, serializeDate(date))
+    _, err = stmt.Exec(note.Title, note.Link, note.Details, note.Author, serializeDate(note.Date))
     if err != nil {
         return err
     }
 
     return tx.Commit()
+}
+
+func (d Database) UpdateNote(note Note) error {
+    tx, err := d.db.Begin()
+    if err != nil {
+        return err
+    }
+
+    stmt, err := tx.Prepare("UPDATE notes SET title = ?, link = ?, details = ?, author = ?, date = ? WHERE id = ?;")
+    if err != nil {
+        return err
+    }
+    defer stmt.Close()
+
+    _, err = stmt.Exec(note.Title, note.Link, note.Details, note.Author, serializeDate(note.Date), note.NoteID)
+    if err != nil {
+        return err
+    }
+
+    return tx.Commit()
+
 }
 
 func (d Database) RemoveNote(noteID uint64) error {
@@ -105,8 +130,44 @@ func (d Database) RemoveNote(noteID uint64) error {
     return tx.Commit()
 }
 
+func (d Database) GetNote(noteID uint64) (*Note, error) {
+    stmt, err := d.db.Prepare("SELECT id, title, link, details, author, date FROM notes WHERE id = ?")
+    if err != nil {
+        return nil, err
+    }
+    defer stmt.Close()
+
+    rows, err := stmt.Query(noteID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var note *Note = nil
+    for rows.Next() {
+        var rawDate string
+        note = new(Note)
+        err = rows.Scan(&note.NoteID, &note.Title, &note.Link, &note.Details, &note.Author, &rawDate)
+        if err != nil {
+            return nil, err
+        }
+        note.Date, err = deserializeDate(rawDate)
+        if err != nil {
+            return nil, fmt.Errorf("Invalid date format: %v", err)
+        }
+        return note, nil
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    // If we are here, no note with the given id has been found
+    return nil, nil
+
+}
+
 func (d Database) GetNotes() ([]Note, error) {
-    rows, err := d.db.Query("SELECT id, title, details, date FROM notes")
+    rows, err := d.db.Query("SELECT id, title, link, details, author, date FROM notes")
     if err != nil {
         return nil, err
     }
@@ -117,7 +178,7 @@ func (d Database) GetNotes() ([]Note, error) {
     for rows.Next() {
         var note Note
         var rawDate string
-    	err = rows.Scan(&note.NoteID, &note.Title, &note.Details, &rawDate)
+    	err = rows.Scan(&note.NoteID, &note.Title, &note.Link, &note.Details, &note.Author, &rawDate)
     	if err != nil {
     	    return nil, err
     	}
@@ -248,6 +309,26 @@ func (d Database) RemoveUser(username string) error {
     defer stmt.Close()
 
     _, err = stmt.Exec(username)
+    if err != nil {
+        return err
+    }
+
+    return tx.Commit()
+}
+
+func (d Database) ChangePassword(username, password string) error {
+    tx, err := d.db.Begin()
+    if err != nil {
+        return err
+    }
+
+    stmt, err := tx.Prepare("UPDATE users SET password = ? WHERE username = ?")
+    if err != nil {
+        return err
+    }
+    defer stmt.Close()
+
+    _, err = stmt.Exec(password, username)
     if err != nil {
         return err
     }
