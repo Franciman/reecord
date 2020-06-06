@@ -7,7 +7,7 @@
             <input type="hidden" name="note_id" value="{{.NoteID}}">
             <input type="text" name="title" value="{{.Title}}" required>
             <input type="text" name="link" value="{{.Link}}" placeholder="Link">
-            <textarea name="details" value="{{.Details}}" placeholder="Details">
+            <textarea name="details" value="{{.Details}}" placeholder="Details">{{.Details}}</textarea>
             <input type="submit" value="Update">
         </form>
     </body>
