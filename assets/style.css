@@ -5,6 +5,7 @@
 
 #feed {
     margin-left: 10px;
+    overflow-y: auto;
 }
 
 #new_note {
